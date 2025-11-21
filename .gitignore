@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.pyc
+
+# Backend local secrets + venv
+backend/.env
+backend/.venv/
+
+# Node (Frontend)
+node_modules/
+
+# Next.js build output
+.next/
+
+# macOS / OS junk
+.DS_Store
+
+# Local env files anywhere
+*.env
