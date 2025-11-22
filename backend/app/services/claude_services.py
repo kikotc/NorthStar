@@ -3,7 +3,7 @@ from anthropic import Anthropic
 from app.core.config import settings
 
 
-client = Anthropic(api_key=settings.claude_api_key)
+client = Anthropic(api_key=settings.anthropic_api_key)
 
 
 def call_claude(messages: list[dict], model: str = "claude-3-sonnet-20240229"):
