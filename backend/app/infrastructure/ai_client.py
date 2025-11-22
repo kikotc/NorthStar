@@ -1,3 +1,5 @@
+from typing import Optional
+
 from anthropic import Anthropic
 from app.core.config import settings
 

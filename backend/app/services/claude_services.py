@@ -1,12 +1,11 @@
 # app/services/claude_service.py
-from anthropic import Anthropic
-from app.core.config import settings
+from typing import Literal
 
+from app.infrastructure.ai_client import get_claude_client
 
-client = Anthropic(api_key=settings.anthropic_api_key)
+ClaudeRole = Literal["user", "assistant", "system"]
 
-
-def call_claude(messages: list[dict], model: str = "claude-3-sonnet-20240229"):
+def call_claude(messages: list[dict], model: str = "claude-3-sonnet-20240229", max_tokens: int = 800):
     """
     Wrapper for calling Claude to keep code clean.
     Expects a list of messages:
@@ -17,7 +16,7 @@ def call_claude(messages: list[dict], model: str = "claude-3-sonnet-20240229"):
     """
     response = client.messages.create(
         model=model,
-        max_tokens=800,
+        max_tokens=max_tokens,
         messages=messages
     )
 
