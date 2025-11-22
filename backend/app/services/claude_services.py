@@ -1,26 +1,54 @@
-# app/services/claude_service.py
-from typing import Literal
+from typing import List, Literal, TypedDict
 
 from app.infrastructure.ai_client import get_claude_client
 
+# Claude only accepts these three roles
 ClaudeRole = Literal["user", "assistant", "system"]
 
-def call_claude(messages: list[dict], model: str = "claude-3-sonnet-20240229", max_tokens: int = 800):
+class ClaudeMessage(TypedDict):
+    role: ClaudeRole
+    content: str
+
+DEFAULT_MODEL = "claude-3-sonnet-20240229"
+
+def call_claude(
+    messages: List[ClaudeMessage],
+    model: str = DEFAULT_MODEL,
+    max_tokens: int = 800,
+) -> str:
     """
-    Wrapper for calling Claude to keep code clean.
-    Expects a list of messages:
-    [
-      {"role": "user", "content": "Hello"},
-      {"role": "assistant", "content": "..."}
-    ]
+    Wrapper around Anthropic's messages.create API.
+
+    - `messages` should look like:
+      [
+        {"role": "system", "content": "You are a helpful assistant."},
+        {"role": "user", "content": "Write me a 200-word bio."}
+      ]
+
+    - Returns a single concatenated text string from Claude's response.
     """
+    client = get_claude_client()
+
     response = client.messages.create(
         model=model,
         max_tokens=max_tokens,
-        messages=messages
+        messages=messages,
     )
 
-    # Combine all text blocks into a single string
+    # Anthropic returns a list of content blocks.
+    # We join all the text blocks together into one string.
     return "".join(
-        block.text for block in response.content if block.type == "text"
+        block.text for block in response.content if getattr(block, "type", None) == "text"
     )
+
+
+def make_user_message(text: str) -> ClaudeMessage:
+    return {"role": "user", "content": text}
+
+
+def make_system_message(text: str) -> ClaudeMessage:
+    return {"role": "system", "content": text}
+
+
+def make_assistant_message(text: str) -> ClaudeMessage:
+    return {"role": "assistant", "content": text}
