@@ -37,6 +37,16 @@ type MatchResponse = {
   scholarships?: MatchedScholarship[]; // safety if backend uses old shape
 };
 
+type ProfilePayloadResult = {
+  payload: UserProfilePayload;
+  completedAt?: string;
+};
+
+type MatchesCache = {
+  profileCompletedAt?: string;
+  matches: MatchedScholarship[];
+};
+
 function splitToList(value: unknown): string[] {
   if (!value) return [];
   if (Array.isArray(value)) return value.map(String).filter(Boolean);
@@ -49,7 +59,7 @@ function splitToList(value: unknown): string[] {
   return [];
 }
 
-function buildProfilePayload(): UserProfilePayload | null {
+function buildProfilePayload(): ProfilePayloadResult | null {
   if (typeof window === 'undefined') return null;
 
   const rawJson = window.localStorage.getItem('userProfile');
@@ -73,7 +83,7 @@ function buildProfilePayload(): UserProfilePayload | null {
       ethnicities: Array.isArray(raw.ethnicities) ? raw.ethnicities : [],
 
       experiences,
-      interests: [], // can wire these later if you add them to the form
+      interests: [], // wire up later if you add to the form
       awards,
       skills: combinedSkills,
     };
@@ -83,10 +93,52 @@ function buildProfilePayload(): UserProfilePayload | null {
       return null;
     }
 
-    return payload;
+    return {
+      payload,
+      completedAt: raw.completedAt,
+    };
   } catch (e) {
     console.error('Failed to parse userProfile from localStorage', e);
     return null;
+  }
+}
+
+function loadMatchesCache(profileCompletedAt?: string): MatchedScholarship[] | null {
+  if (typeof window === 'undefined' || !profileCompletedAt) return null;
+
+  const raw = window.localStorage.getItem('northstarMatches');
+  if (!raw) return null;
+
+  try {
+    const parsed: MatchesCache = JSON.parse(raw);
+    if (
+      parsed.profileCompletedAt === profileCompletedAt &&
+      Array.isArray(parsed.matches)
+    ) {
+      return parsed.matches;
+    }
+  } catch (e) {
+    console.error('Failed to parse matches cache', e);
+  }
+
+  return null;
+}
+
+function saveMatchesCache(
+  profileCompletedAt: string | undefined,
+  matches: MatchedScholarship[],
+) {
+  if (typeof window === 'undefined' || !profileCompletedAt) return;
+
+  const payload: MatchesCache = {
+    profileCompletedAt,
+    matches,
+  };
+
+  try {
+    window.localStorage.setItem('northstarMatches', JSON.stringify(payload));
+  } catch (e) {
+    console.error('Failed to save matches cache', e);
   }
 }
 
@@ -97,14 +149,15 @@ function matchLabel(p: number): string {
 }
 
 export default function ScholarshipsPage() {
-  const [matches, setMatches] = useState<MatchedScholarship[]>([]);
+  // null = not loaded yet; [] = loaded but no matches
+  const [matches, setMatches] = useState<MatchedScholarship[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const profile = buildProfilePayload();
+    const profileResult = buildProfilePayload();
 
-    if (!profile) {
+    if (!profileResult) {
       setError(
         'Please complete your profile first so we can match scholarships to you.',
       );
@@ -112,6 +165,17 @@ export default function ScholarshipsPage() {
       return;
     }
 
+    const { payload, completedAt } = profileResult;
+
+    // 1) Try cache first
+    const cached = loadMatchesCache(completedAt);
+    if (cached && cached.length > 0) {
+      setMatches(cached.slice(0, 5));
+      setLoading(false);
+      return;
+    }
+
+    // 2) Otherwise call backend
     const controller = new AbortController();
 
     async function load() {
@@ -125,7 +189,7 @@ export default function ScholarshipsPage() {
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify(profile),
+          body: JSON.stringify(payload),
         });
 
         if (!res.ok) {
@@ -135,12 +199,12 @@ export default function ScholarshipsPage() {
         const data: MatchResponse = await res.json();
         console.log('match api raw response', data);
 
-        // Handle both { matches: [...] } and older { scholarships: [...] } shape
         const serverMatches =
           (data.matches ?? data.scholarships ?? []) as MatchedScholarship[];
 
         const topFive = serverMatches.slice(0, 5);
         setMatches(topFive);
+        saveMatchesCache(completedAt, topFive);
       } catch (err: any) {
         if (err?.name === 'AbortError') return;
         console.error('Failed to load scholarship matches', err);
@@ -154,7 +218,8 @@ export default function ScholarshipsPage() {
     return () => controller.abort();
   }, []);
 
-  if (loading) {
+  // If we are still loading (or matches haven't been set yet), show loading
+  if (loading && !error) {
     return (
       <div className="mx-auto max-w-6xl pt-24 text-center text-white">
         Loading your top scholarship matches…
@@ -176,13 +241,12 @@ export default function ScholarshipsPage() {
     );
   }
 
-  if (!matches.length) {
+  if (!matches || matches.length === 0) {
     return (
       <div className="mx-auto max-w-6xl pt-24 text-center text-white">
         <p className="mb-2 text-lg">No matches yet.</p>
         <p className="text-sm text-slate-300">
-          Try adding more detail about your experiences, projects, awards, and
-          skills.
+          Try adding more detail about your experiences, projects, awards, and skills.
         </p>
       </div>
     );
@@ -193,8 +257,7 @@ export default function ScholarshipsPage() {
       <h1 className="text-3xl font-bold text-white mb-4">Scholarships</h1>
 
       <p className="mb-6 text-sm text-slate-300">
-        These are your top {Math.min(matches.length, 5)} matches based on your
-        profile.
+        These are your top {Math.min(matches.length, 5)} matches based on your profile.
       </p>
 
       <div className="space-y-6">
