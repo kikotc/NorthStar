@@ -76,9 +76,12 @@ class UserProfileInput(BaseModel):
     # e.g. "domestic", "international"
     residency_status: str
 
-    experiences: List[str]
-    interests: List[str]
-    awards: List[str]
+    ethnicities: List[str] = []
+
+    experiences: List[str] = []
+    interests: List[str] = []
+    awards: List[str] = []
+    skills: List[str] = []
 
 
 class ScholarshipMatchResult(BaseModel):
@@ -207,7 +210,8 @@ Your task for EACH scholarship:
 
 2. Infer a similar weight profile for the student, based on:
    - their program, year, residency_status
-   - their experiences, interests, and awards.
+   - their ethnicities (only when relevant and fair for eligibility)
+   - their experiences, interests, skills, and awards.
 
 3. Conceptually compute a compatibility score by comparing the scholarship's
    weight profile to the student's weight profile (e.g., via a dot product

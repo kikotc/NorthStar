@@ -6,23 +6,112 @@ import Link from 'next/link';
 const API_BASE =
   process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:8000';
 
-type Scholarship = {
-  id: number | string;
-  name: string;
-  description?: string;
-  value?: string | null;
-  deadline?: string | null;
-  category?: string | null;
-  offered_by?: string | null;
-  citizenship?: string | null;
+type UserProfilePayload = {
+  full_name: string;
+  university: string;
+  program: string;
+  year: number;
+  residency_status: 'domestic' | 'international';
+  ethnicities: string[];
+
+  experiences: string[];
+  interests: string[];
+  awards: string[];
+  skills: string[];
 };
 
+type MatchedScholarship = {
+  id: string;
+  title: string;
+  value?: string | null;
+  deadline?: string | null;
+  level_of_study?: string | null;
+  legal_status?: string | null;
+  description?: string | null;
+  match_percentage: number;
+  reason?: string | null;
+};
+
+type MatchResponse = {
+  matches?: MatchedScholarship[];
+  scholarships?: MatchedScholarship[]; // safety if backend uses old shape
+};
+
+function splitToList(value: unknown): string[] {
+  if (!value) return [];
+  if (Array.isArray(value)) return value.map(String).filter(Boolean);
+  if (typeof value === 'string') {
+    return value
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean);
+  }
+  return [];
+}
+
+function buildProfilePayload(): UserProfilePayload | null {
+  if (typeof window === 'undefined') return null;
+
+  const rawJson = window.localStorage.getItem('userProfile');
+  if (!rawJson) return null;
+
+  try {
+    const raw = JSON.parse(rawJson);
+
+    const experiences = splitToList(raw.experiences);
+    const awards = splitToList(raw.awards);
+    const projects = splitToList(raw.projects);
+    const skillsText = splitToList(raw.skills);
+    const combinedSkills = [...skillsText, ...projects].filter(Boolean);
+
+    const payload: UserProfilePayload = {
+      full_name: raw.fullName || '',
+      university: raw.university || '',
+      program: raw.programOfStudy || '',
+      year: Number(raw.year ?? 1),
+      residency_status: raw.isInternationalStudent ? 'international' : 'domestic',
+      ethnicities: Array.isArray(raw.ethnicities) ? raw.ethnicities : [],
+
+      experiences,
+      interests: [], // can wire these later if you add them to the form
+      awards,
+      skills: combinedSkills,
+    };
+
+    // Basic sanity check: if core fields are missing, treat as incomplete
+    if (!payload.full_name || !payload.university || !payload.program || !payload.year) {
+      return null;
+    }
+
+    return payload;
+  } catch (e) {
+    console.error('Failed to parse userProfile from localStorage', e);
+    return null;
+  }
+}
+
+function matchLabel(p: number): string {
+  if (p >= 70) return 'Strong Match';
+  if (p >= 40) return 'Good Match';
+  return 'Possible Match';
+}
+
 export default function ScholarshipsPage() {
-  const [scholarships, setScholarships] = useState<Scholarship[]>([]);
+  const [matches, setMatches] = useState<MatchedScholarship[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    const profile = buildProfilePayload();
+
+    if (!profile) {
+      setError(
+        'Please complete your profile first so we can match scholarships to you.',
+      );
+      setLoading(false);
+      return;
+    }
+
     const controller = new AbortController();
 
     async function load() {
@@ -30,22 +119,32 @@ export default function ScholarshipsPage() {
         setLoading(true);
         setError(null);
 
-        const res = await fetch(`${API_BASE}/api/scholarships/`, {
+        const res = await fetch(`${API_BASE}/api/scholarships/match`, {
+          method: 'POST',
           signal: controller.signal,
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(profile),
         });
 
         if (!res.ok) {
           throw new Error(`HTTP ${res.status}`);
         }
 
-        const data: Scholarship[] = await res.json();
+        const data: MatchResponse = await res.json();
+        console.log('match api raw response', data);
 
-        // For now show all; later you can sort and slice for “top 10 matches”
-        setScholarships(data);
+        // Handle both { matches: [...] } and older { scholarships: [...] } shape
+        const serverMatches =
+          (data.matches ?? data.scholarships ?? []) as MatchedScholarship[];
+
+        const topFive = serverMatches.slice(0, 5);
+        setMatches(topFive);
       } catch (err: any) {
         if (err?.name === 'AbortError') return;
-        console.error('Failed to load scholarships', err);
-        setError('Unable to load scholarships.');
+        console.error('Failed to load scholarship matches', err);
+        setError('Unable to load scholarship matches right now.');
       } finally {
         setLoading(false);
       }
@@ -57,76 +156,121 @@ export default function ScholarshipsPage() {
 
   if (loading) {
     return (
-      <div className="mx-auto max-w-4xl py-16 text-center text-white">
-        Loading scholarships...
+      <div className="mx-auto max-w-6xl pt-24 text-center text-white">
+        Loading your top scholarship matches…
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="mx-auto max-w-4xl py-16 text-center text-white">
-        <p>{error}</p>
+      <div className="mx-auto max-w-6xl pt-24 text-center text-white">
+        <p className="mb-4 text-lg">{error}</p>
+        <Link
+          href="/profile"
+          className="text-indigo-400 hover:text-indigo-300 font-medium"
+        >
+          Go back to profile
+        </Link>
+      </div>
+    );
+  }
+
+  if (!matches.length) {
+    return (
+      <div className="mx-auto max-w-6xl pt-24 text-center text-white">
+        <p className="mb-2 text-lg">No matches yet.</p>
+        <p className="text-sm text-slate-300">
+          Try adding more detail about your experiences, projects, awards, and
+          skills.
+        </p>
       </div>
     );
   }
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6 py-10">
-      <h1 className="mb-6 text-3xl font-bold text-white">Scholarships</h1>
+    <div className="mx-auto max-w-6xl space-y-6 pt-10">
+      <h1 className="text-3xl font-bold text-white mb-4">Scholarships</h1>
 
-      {scholarships.map((s) => {
-        const deadline =
-          s.deadline && s.deadline.trim().length > 0
-            ? s.deadline
-            : 'Not listed';
+      <p className="mb-6 text-sm text-slate-300">
+        These are your top {Math.min(matches.length, 5)} matches based on your
+        profile.
+      </p>
 
-        return (
+      <div className="space-y-6">
+        {matches.map((s) => (
           <div
             key={s.id}
-            className="flex gap-8 justify-between rounded-3xl border border-gray-200 bg-white p-8 shadow-sm"
+            className="flex flex-col gap-6 rounded-3xl bg-white p-6 shadow-sm md:flex-row md:items-stretch"
           >
-            <div className="flex-1 space-y-3">
-              <h2 className="text-xl font-semibold text-gray-900">{s.name}</h2>
+            {/* Left: scholarship details */}
+            <div className="flex-1 space-y-3 text-sm text-gray-800">
+              <h2 className="text-xl font-semibold text-gray-900">
+                {s.title}
+              </h2>
 
-              <div className="space-y-1 text-sm text-gray-700">
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold">Value</span>
-                  <span>{s.value || 'Variable / Not listed'}</span>
+              <div className="space-y-1">
+                <div className="flex gap-2">
+                  <span className="font-semibold">💰 Value</span>
+                  <span>{s.value || 'Not listed'}</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold">Deadline</span>
-                  <span>{deadline}</span>
+                <div className="flex gap-2">
+                  <span className="font-semibold">⏰ Deadline</span>
+                  <span>{s.deadline || 'Not listed'}</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold">Category</span>
-                  <span>{s.category || 'Not listed'}</span>
-                </div>
+                {s.level_of_study && (
+                  <div className="flex gap-2">
+                    <span className="font-semibold">🎓 Level of Study</span>
+                    <span>{s.level_of_study}</span>
+                  </div>
+                )}
+                {s.legal_status && (
+                  <div className="flex gap-2">
+                    <span className="font-semibold">📜 Legal Status</span>
+                    <span>{s.legal_status}</span>
+                  </div>
+                )}
               </div>
 
               {s.description && (
-                <div className="mt-3">
-                  <p className="text-sm font-semibold text-gray-900">
+                <div className="pt-2">
+                  <p className="text-xs font-semibold text-gray-900 mb-1">
                     Description
                   </p>
-                  <p className="text-sm text-gray-700 leading-relaxed line-clamp-3">
+                  <p className="text-xs leading-relaxed text-gray-700 line-clamp-4">
                     {s.description}
                   </p>
                 </div>
               )}
+
+              {s.reason && (
+                <p className="pt-2 text-xs text-indigo-700">
+                  Why this match: {s.reason}
+                </p>
+              )}
             </div>
 
-            <div className="flex items-center">
+            {/* Right: match percentage + button */}
+            <div className="flex w-full flex-col items-center justify-between gap-4 md:w-48">
+              <div className="flex flex-col items-center justify-center rounded-2xl bg-indigo-50 px-6 py-4">
+                <div className="text-3xl font-bold text-indigo-600">
+                  {Math.round(s.match_percentage)}%
+                </div>
+                <div className="text-xs font-medium text-indigo-800 mt-1">
+                  {matchLabel(s.match_percentage)}
+                </div>
+              </div>
+
               <Link
                 href={`/scholarships/${s.id}`}
-                className="rounded-2xl bg-indigo-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-600/30 hover:bg-indigo-700"
+                className="w-full rounded-full bg-indigo-600 px-4 py-2 text-center text-sm font-semibold text-white shadow-md hover:bg-indigo-500 transition"
               >
                 View Details
               </Link>
             </div>
           </div>
-        );
-      })}
+        ))}
+      </div>
     </div>
   );
 }
