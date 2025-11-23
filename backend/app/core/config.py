@@ -2,6 +2,10 @@
 
 from dataclasses import dataclass
 import os
+from dotenv import load_dotenv
+
+# Load .env file once when config is imported
+load_dotenv()
 
 @dataclass
 class Settings:
@@ -22,5 +26,5 @@ def get_settings() -> Settings:
         anthropic_api_key=os.getenv("ANTHROPIC_API_KEY"),
     )
 
-# 👇 THIS LINE IS CRITICAL
+# 👇 This gives us global `settings` everywhere we import config
 settings = get_settings()
