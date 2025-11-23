@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import Header from "@/components/header";
+import { useAuth } from "@/contexts/auth-context"; // ✅ NEW
 
 const highlights = [
   "LLM extracts key phrases from target scholarships.",
@@ -11,6 +12,9 @@ const highlights = [
 ];
 
 export default function Home() {
+  const { user } = useAuth();                    // ✅ NEW
+  const startHref = user ? "/scholarships" : "/signup"; // ✅ NEW
+
   return (
     <div className="relative mx-auto flex min-h-screen w-full max-w-[1280px] flex-col gap-16 px-4 pb-24 pt-8 sm:px-10 lg:px-16">
       <Header />
@@ -28,7 +32,7 @@ export default function Home() {
         </p>
         <div className="relative z-10 mt-10 flex flex-wrap gap-4">
           <Link
-            href="/signup"
+            href={startHref}  // ✅ was "/signup"
             className="inline-flex items-center gap-2 rounded-full bg-indigo-600 px-7 py-3.5 text-base font-semibold text-white shadow-lg shadow-indigo-600/25 transition hover:bg-indigo-700 hover:shadow-xl hover:shadow-indigo-600/30"
           >
             Start your application now
@@ -128,7 +132,7 @@ export default function Home() {
         </p>
         <div className="mt-8 flex flex-wrap justify-center gap-4">
           <Link
-            href="/signup"
+            href={startHref}  // ✅ was "/signup"
             className="rounded-full bg-indigo-600 px-7 py-3 text-base font-semibold text-white shadow-lg shadow-indigo-600/25 transition hover:bg-indigo-700"
           >
             Sign up with Google
