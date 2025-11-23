@@ -32,6 +32,36 @@ type ScholarshipAnalysis = {
 const API_BASE =
   process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:8000';
 
+const SCHOLARSHIP_CACHE_PREFIX = 'northstar_scholarship_';
+
+function loadCachedScholarship(id: string): Scholarship | null {
+  if (typeof window === 'undefined') return null;
+
+  try {
+    const raw = window.localStorage.getItem(
+      `${SCHOLARSHIP_CACHE_PREFIX}${id}`,
+    );
+    if (!raw) return null;
+    return JSON.parse(raw) as Scholarship;
+  } catch (e) {
+    console.error('Failed to read scholarship cache', e);
+    return null;
+  }
+}
+
+function saveCachedScholarship(id: string, data: Scholarship) {
+  if (typeof window === 'undefined') return;
+
+  try {
+    window.localStorage.setItem(
+      `${SCHOLARSHIP_CACHE_PREFIX}${id}`,
+      JSON.stringify(data),
+    );
+  } catch (e) {
+    console.error('Failed to write scholarship cache', e);
+  }
+}
+
 export default function ScholarshipDetailPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
@@ -61,13 +91,22 @@ export default function ScholarshipDetailPage() {
     const controller = new AbortController();
 
     async function load() {
-      setLoading(true);
       setError(null);
       setAnalysis(null);
       setAnalysisError(null);
       setExpandedProfiles({});
       setSelectedProfiles(new Set());
 
+      // 1) Try cache first – if found, show immediately (no loading flicker)
+      const cached = loadCachedScholarship(String(id));
+      if (cached) {
+        setScholarship(cached);
+        setLoading(false);
+      } else {
+        setLoading(true);
+      }
+
+      // 2) Still fetch fresh data in the background
       try {
         // 1) base scholarship
         const res = await fetch(`${API_BASE}/api/scholarships/${id}`, {
@@ -80,28 +119,7 @@ export default function ScholarshipDetailPage() {
 
         const data: Scholarship = await res.json();
         setScholarship(data);
-
-        // 2) analysis (non-fatal)
-        try {
-          const analysisRes = await fetch(
-            `${API_BASE}/api/scholarships/${id}/analysis`,
-            { signal: controller.signal },
-          );
-
-          if (!analysisRes.ok) {
-            console.error('Analysis HTTP error', analysisRes.status);
-            setAnalysisError('Failed to load AI priorities');
-          } else {
-            const analysisData: ScholarshipAnalysis =
-              await analysisRes.json();
-            console.log('SCHOLARSHIP ANALYSIS FRONTEND:', analysisData);
-            setAnalysis(analysisData);
-          }
-        } catch (err: any) {
-          if (err?.name === 'AbortError') return;
-          console.error('Failed to load analysis', err);
-          setAnalysisError('Failed to load AI priorities');
-        }
+        saveCachedScholarship(String(id), data);
       } catch (err: any) {
         if (err?.name === 'AbortError') return;
         console.error('Failed to load scholarship', err);
@@ -112,7 +130,6 @@ export default function ScholarshipDetailPage() {
     }
 
     load();
-
     return () => controller.abort();
   }, [id]);
 
@@ -143,7 +160,26 @@ export default function ScholarshipDetailPage() {
     );
   }
 
-  if (error || !scholarship) {
+  if (error) {
+    return (
+      <div className="mx-auto max-w-6xl pt-24 text-center text-white">
+        <h1 className="mb-4 text-2xl font-semibold">
+          Something went wrong
+        </h1>
+        <p className="mb-6">{error}</p>
+        <Link
+          href="/scholarships"
+          className="font-medium text-indigo-400 hover:text-indigo-300"
+        >
+          ← Back to Scholarships
+        </Link>
+      </div>
+    );
+  }
+
+  // ✅ At this point loading is false and no error.
+  // If scholarship is still null, treat it as "not found" but DON'T crash.
+  if (!scholarship) {
     return (
       <div className="mx-auto max-w-6xl pt-24 text-center text-white">
         <h1 className="mb-4 text-2xl font-semibold">Scholarship not found</h1>
@@ -340,9 +376,8 @@ const handleGoToDraft = () => {
           Ready to start your essay for this scholarship?
         </h2>
         <p className="mt-2 text-sm text-gray-700">
-          North Star AI will analyze this scholarship’s hidden priorities,
-          combine them with your profile, and generate a first draft you can
-          edit and refine.
+          North Star AI will analyze this scholarship’s hidden priorities, combine
+          them with your profile, and generate a first draft you can edit and refine.
         </p>
         <button
           type="button"
