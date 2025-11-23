@@ -18,3 +18,4 @@ node_modules/
 # Local env files anywhere
 *.env
 .env.local
+/frontend/next-env.d.ts

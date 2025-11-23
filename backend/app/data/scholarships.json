@@ -24,7 +24,7 @@
     "name": "Allan Marshall Memorial Bursary",
     "description": "Awarded in memory of Flt/Lt. S.A. Marshall (UC 1948) who gave his life in the service of Canada on May 19, 1956. The bursary of the value of the annual income is awarded to a University College student entering their graduating year, requiring financial assistance, who has in previous years obtained high academic standing and has been active in student affairs.",
     "offered_by": "University College",
-    "citizenship": "Domestic;International",
+    "citizenship": "Domestic",
     "deadline": null,
     "value": "Approx. $400",
     "category": "Academic Merit, Financial Need"
@@ -34,7 +34,7 @@
     "name": "Alta Lind Cook Prize",
     "description": "Awarded to a Victoria College student or former student who has graduated within one year for the best original musical composition or the best original literary composition in either English or French. Previous recipients are not eligible to re-apply.",
     "offered_by": "Victoria College",
-    "citizenship": "Domestic;International",
+    "citizenship": "Domestic",
     "deadline": "2025-04-28 17:00",
     "value": "Up to $500",
     "category": "Other"
@@ -124,7 +124,7 @@
     "name": "Beatrice Bott Dow Bursary in English Literature",
     "description": "Established in memory of Beatrice Bott Dow by her family. To be awarded to a University College student enrolled in English Literature who has demonstrated financial need.",
     "offered_by": "University College",
-    "citizenship": "Domestic;International",
+    "citizenship": "International",
     "deadline": null,
     "value": "Variable",
     "category": "Academic Merit, Financial Need"
@@ -134,7 +134,7 @@
     "name": "Bennett Scholars UTAPS",
     "description": "This award is disbursed as part of the University of Toronto Financial Aid program. To be awarded to full-time undergraduate students at the University of Toronto on the basis of financial need. The higher value awards will be given to students with Indigenous backgrounds or whose parents did not attend university or college. The remaining awards will be given to undergraduate students on the basis of financial need.",
     "offered_by": "University Registrar's Office",
-    "citizenship": "Domestic",
+    "citizenship": "International",
     "deadline": null,
     "value": "Varies, based on financial need",
     "category": "Financial Need, Other"
@@ -148,5 +148,105 @@
     "deadline": null,
     "value": "Based on financial need",
     "category": "Financial Need"
+  },
+  {
+    "id": 16,
+    "name": "Rhodes Scholarship",
+    "description": "The Rhodes Scholarship supports exceptional young people for postgraduate study at the University of Oxford, and actively fosters lifelong learning and fellowship. The Rhodes Scholarships are managed by the Rhodes Trust.",
+    "offered_by": "University Registrar's Office",
+    "citizenship": "Domestic;International",
+    "deadline": null,
+    "value": "Covers Oxford University fees plus annual stipend",
+    "category": "Academic Merit, Athletic Performance, Community, Financial Need, Leadership, Extra Curriculars"
+  },
+  {
+    "id": 17,
+    "name": "Susan J Serena Scholarship",
+    "description": "Awarded to one or more students in the Faculty of Arts and Science who are well-rounded and demonstrate admirable qualities such as community service or involvement, or participation in athletics and sports, in addition to maintaining an academic average of at least a B-.",
+    "offered_by": "Faculty of Arts and Science",
+    "citizenship": "Domestic;International",
+    "deadline": null,
+    "value": "approx. $ 2,000",
+    "category": "Academic Merit, Community, Athletic Performance, Extra Curriculars"
+  },
+  {
+    "id": 18,
+    "name": "Allen X. Ma Scholarship for Excellence in Leadership",
+    "description": "Awarded to an international Rotman Commerce student with demonstrated community engagement and vision to impact the world.",
+    "offered_by": "Faculty of Arts and Science",
+    "citizenship": "International",
+    "deadline": null,
+    "value": "$2,500",
+    "category": "Community; Leadership; Extra Curriculars"
+  },
+  {
+    "id": 19,
+    "name": "Andy Zhuofan Chen Memorial Scholarship",
+    "description": "Awarded to a Victoria College student who achieves excellence during the course of their studies, with preference to a student of Economics or Finance, who has made a positive contribution to the life of Victoria College and the community.",
+    "offered_by": "Victoria College",
+    "citizenship": "Domestic;International",
+    "deadline": "2025-04-15 23:59",
+    "value": "up to $1,000",
+    "category": "Academic Merit; Community; Other; Extra Curriculars"
+  },
+  {
+    "id": 20,
+    "name": "Bosco Law Award for Student Leadership in Anti-Racism and Inclusion",
+    "description": "Provides recognition to students engaged in outstanding anti-racism efforts through demonstrated volunteerism, leadership and/or community involvement. Students must be registered in any undergraduate program in the Faculty of Arts and Science.",
+    "offered_by": "Faculty of Arts and Science",
+    "citizenship": "Domestic;International",
+    "deadline": null,
+    "value": "Between $1,000 - $10,000",
+    "category": "Academic Merit; Community; Leadership; Extra Curriculars"
+  },
+  {
+    "id": 21,
+    "name": "Cunningham Social Justice Award at Innis College",
+    "description": "To be awarded to two undergraduate students entering first-year studies in Arts & Science at Innis College. The recipients will exemplify Frank Cunningham's values of social justice: socialism, democracy, equality and diversity. Financial need may be considered. The application for this award is typically available by mid-February, with an application deadline of mid-April.",
+    "offered_by": "Innis College",
+    "citizenship": "Domestic;International",
+    "deadline": null,
+    "value": "Approximately $1,000 per recipient",
+    "category": "Community; Financial Need; Leadership; Extra Curriculars"
+  },
+  {
+    "id": 22,
+    "name": "David H Farrar Undergraduate Scholarship in Chemistry",
+    "description": "Awarded to an undergraduate student in the Department of Chemistry who distinguished him/herself both academically and for their leadership and contribution to the life of the University through student governance, community service or volunteer work.",
+    "offered_by": "Faculty of Arts and Science",
+    "citizenship": "Domestic;International",
+    "deadline": "2020-01-31 00:00",
+    "value": "$225",
+    "category": "Academic Merit, Extra Curriculars, Community"
+  },
+  {
+    "id": 23,
+    "name": "Audrey Hozack Student Leadership Award",
+    "description": "To be awarded to an undergraduate student with demonstrated leadership excellence within a Hart House group. Students may self-nominate or be nominated by Hart House staff.",
+    "offered_by": "University Registrar's Office",
+    "citizenship": "Domestic;International",
+    "deadline": null,
+    "value": "Varies",
+    "category": "Leadership"
+  },
+  {
+    "id": 24,
+    "name": "Ben Chan Leadership Award",
+    "description": "Awarded to Victoria College students in good academic standing with a minimum GPA of 3.0 who have shown active leadership in any aspect of student life, with preference for those participating in student government or student media.",
+    "offered_by": "Victoria College",
+    "citizenship": "Domestic;International",
+    "deadline": "2025-04-15 23:59",
+    "value": "TBA",
+    "category": "Academic Merit; Leadership; Other"
+  },
+  {
+    "id": 25,
+    "name": "John Grant Leadership Award",
+    "description": "Awarded to Victoria College students who have obtained at least a B standing (GPA 3.0+) and who have made a positive contribution to the life of Victoria College and/or the broader community (preference given to students building community beyond student government).",
+    "offered_by": "Victoria College",
+    "citizenship": "Domestic;International",
+    "deadline": null,
+    "value": "up to $1,000",
+    "category": "Academic Merit; Community; Leadership; Extra Curriculars"
   }
 ]
