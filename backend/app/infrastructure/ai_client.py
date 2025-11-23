@@ -1,9 +1,7 @@
 from typing import Optional
 
 from anthropic import Anthropic
-from app.core.config import settings
-
-_claude_client: Optional[Anthropic] = None
+from app.core.config import settings  # note: 'app.core' not '..core' when imported from main
 
 def get_claude_client() -> Anthropic:
     """
@@ -22,7 +20,9 @@ def get_claude_client() -> Anthropic:
                 "Add it to your backend .env file and restart the app."
             )
 
-        _claude_client = Anthropic(api_key=api_key)
+# Use the model name shown in your Anthropic dashboard
+MODEL_NAME = "claude-sonnet-4-5-20250929"
+
 
     return _claude_client
 
@@ -34,15 +34,10 @@ def ask_claude(
 ) -> str:
     """
     Send a single user prompt to Claude and return the text response.
-
-    Usage from other files:
-        from infrastructure.ai_client import ask_claude
-        text = await ask_claude("hello")
     """
-    client = get_claude_client()
-
-    resp = client.messages.create(
-        model=model,
+    # Synchronous client inside async fn is ok for hackathon
+    resp = anthropic.messages.create(
+        model=MODEL_NAME,
         max_tokens=max_tokens,
         messages=[{"role": "user", "content": prompt}],
     )
