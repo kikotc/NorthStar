@@ -71,10 +71,10 @@ export default function ScholarshipDetailPage() {
   if (error || !scholarship) {
     return (
       <div className="mx-auto max-w-6xl pt-24 text-center text-white">
-        <h1 className="text-2xl font-semibold mb-4">Scholarship not found</h1>
+        <h1 className="mb-4 text-2xl font-semibold">Scholarship not found</h1>
         <Link
           href="/scholarships"
-          className="text-indigo-400 hover:text-indigo-300 font-medium"
+          className="font-medium text-indigo-400 hover:text-indigo-300"
         >
           ← Back to Scholarships
         </Link>
@@ -86,6 +86,8 @@ export default function ScholarshipDetailPage() {
     scholarship.deadline && scholarship.deadline.trim().length > 0
       ? scholarship.deadline
       : 'Not listed';
+
+  const scholarshipId = String(scholarship.id ?? id);
 
   return (
     <div className="mx-auto max-w-6xl space-y-6 pt-10">
@@ -142,8 +144,22 @@ export default function ScholarshipDetailPage() {
         </div>
       </div>
 
-      {/* Placeholder right-hand column for future AI weights / drafts */}
-      {/* For now, this keeps the layout flexible without blocking you. */}
+      {/* CTA to go to drafting workspace */}
+      <div className="rounded-3xl border border-indigo-200 bg-gradient-to-br from-indigo-50/60 to-purple-50/40 p-6 shadow-sm">
+        <h2 className="text-xl font-semibold text-gray-900">
+          Ready to start your essay for this scholarship?
+        </h2>
+        <p className="mt-2 text-sm text-gray-700">
+          North Star AI will analyze this scholarship’s hidden priorities, combine them
+          with your profile, and generate a first draft you can edit and refine.
+        </p>
+        <Link
+          href={`/scholarships/${scholarshipId}/draft`}
+          className="mt-4 inline-flex items-center justify-center rounded-full bg-indigo-600 px-6 py-3 text-sm font-semibold text-white shadow-md transition hover:bg-indigo-700"
+        >
+          Go to drafting workspace
+        </Link>
+      </div>
     </div>
   );
 }
