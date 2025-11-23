@@ -2,6 +2,7 @@
 
 import { useParams } from "next/navigation"
 import Link from "next/link"
+import { useState } from "react"
 
 const scholarshipsData: Record<string, any> = {
   "cgsm": {
@@ -104,6 +105,9 @@ export default function ScholarshipDetailPage() {
   const params = useParams()
   const id = params.id as string
   const scholarship = scholarshipsData[id]
+  const [expandedProfiles, setExpandedProfiles] = useState<Record<number, boolean>>({})
+  const [selectedProfiles, setSelectedProfiles] = useState<Set<number>>(new Set())
+  const [showMoreDescription, setShowMoreDescription] = useState(false)
 
   if (!scholarship) {
     return (
@@ -114,6 +118,25 @@ export default function ScholarshipDetailPage() {
         </Link>
       </div>
     )
+  }
+
+  const toggleProfile = (index: number) => {
+    setExpandedProfiles(prev => ({
+      ...prev,
+      [index]: !prev[index]
+    }))
+  }
+
+  const toggleSelectProfile = (index: number) => {
+    setSelectedProfiles(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(index)) {
+        newSet.delete(index)
+      } else {
+        newSet.add(index)
+      }
+      return newSet
+    })
   }
 
   return (
@@ -181,7 +204,29 @@ export default function ScholarshipDetailPage() {
           <div className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
             <h2 className="text-xl font-semibold text-gray-900 mb-4">Description</h2>
             <p className="text-gray-600 leading-relaxed">{scholarship.description}</p>
-            <button className="mt-4 text-indigo-600 hover:text-indigo-700 font-medium text-sm">Learn More →</button>
+            {!showMoreDescription && (
+              <button 
+                onClick={() => setShowMoreDescription(true)}
+                className="mt-4 text-indigo-600 hover:text-indigo-700 font-medium text-sm cursor-pointer transition"
+              >
+                Learn More →
+              </button>
+            )}
+            {showMoreDescription && (
+              <div className="mt-4">
+                <p className="text-gray-600 leading-relaxed mb-4">
+                  For more detailed information about this scholarship, including application requirements, 
+                  eligibility criteria, and submission guidelines, please visit the official scholarship website 
+                  or contact the scholarship provider directly.
+                </p>
+                <button 
+                  onClick={() => setShowMoreDescription(false)}
+                  className="text-indigo-600 hover:text-indigo-700 font-medium text-sm cursor-pointer transition"
+                >
+                  Show Less
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Criteria */}
@@ -205,16 +250,39 @@ export default function ScholarshipDetailPage() {
             
             <div className="space-y-4">
               {scholarship.weightProfiles.map((profile: any, index: number) => (
-                <div key={index} className="rounded-2xl border border-indigo-100 bg-indigo-50/50 p-4">
+                <div 
+                  key={index} 
+                  onClick={() => toggleSelectProfile(index)}
+                  className={`rounded-2xl border p-4 cursor-pointer transition ${
+                    selectedProfiles.has(index)
+                      ? 'border-indigo-500 bg-indigo-100/70 shadow-md'
+                      : 'border-indigo-100 bg-indigo-50/50 hover:border-indigo-300'
+                  }`}
+                >
                   <div className="flex items-start justify-between mb-3">
-                    <h3 className="font-semibold text-gray-900">{profile.title}</h3>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={selectedProfiles.has(index)}
+                        onChange={() => toggleSelectProfile(index)}
+                        onClick={(e) => e.stopPropagation()}
+                        className="h-4 w-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500 cursor-pointer"
+                      />
+                      <h3 className="font-semibold text-gray-900">{profile.title}</h3>
+                    </div>
                     <span className="text-3xl font-bold text-indigo-600">{profile.percentage}%</span>
                   </div>
-                  <p className="text-xs text-gray-600 leading-relaxed">
+                  <p className={`text-xs text-gray-600 leading-relaxed ${expandedProfiles[index] ? '' : 'line-clamp-2'}`}>
                     <span className="font-semibold">Reasoning:</span> {profile.reasoning}
                   </p>
-                  <button className="mt-2 text-xs text-indigo-600 hover:text-indigo-700 font-medium">
-                    Read More →
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      toggleProfile(index)
+                    }}
+                    className="mt-2 text-xs text-indigo-600 hover:text-indigo-700 font-medium cursor-pointer transition"
+                  >
+                    {expandedProfiles[index] ? 'Read Less' : 'Read More →'}
                   </button>
                 </div>
               ))}
