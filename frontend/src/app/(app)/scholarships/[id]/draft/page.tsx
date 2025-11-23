@@ -105,9 +105,8 @@ function buildEssayStudentProfile(): EssayStudentProfile | null {
       ...splitToList(raw.skills),
     ];
 
-    const residency_status: 'domestic' | 'international' = raw.isInternationalStudent
-      ? 'international'
-      : 'domestic';
+    const residency_status: 'domestic' | 'international' =
+      raw.isInternationalStudent ? 'international' : 'domestic';
 
     return {
       full_name: fullName,
@@ -162,9 +161,8 @@ export default function DraftPage() {
 
   const [scholarship, setScholarship] = useState<Scholarship | null>(null);
   const [analysis, setAnalysis] = useState<ScholarshipAnalysis | null>(null);
-  const [studentProfile, setStudentProfile] = useState<EssayStudentProfile | null>(
-    null,
-  );
+  const [studentProfile, setStudentProfile] =
+    useState<EssayStudentProfile | null>(null);
 
   const [selectedPriorities, setSelectedPriorities] = useState<string[]>([]);
   const [draftContent, setDraftContent] = useState<string>('');
@@ -219,10 +217,68 @@ export default function DraftPage() {
         const scholarshipData: Scholarship = await scholarRes.json();
         const analysisData: ScholarshipAnalysis = await analysisRes.json();
 
-        setScholarship(scholarshipData);
-        setAnalysis(analysisData);
+        console.log('DRAFT PAGE ANALYSIS:', analysisData);
 
-        const names = (analysisData.priorities ?? []).map((p) => p.name);
+        let priorities = Array.isArray(analysisData.priorities)
+          ? analysisData.priorities
+          : [];
+
+        // Fallback if analysis somehow has no priorities
+        if (priorities.length === 0) {
+          priorities = [
+            {
+              name: 'academic_excellence',
+              weight: 0.5,
+              reason: 'Default fallback priority',
+            },
+            {
+              name: 'leadership',
+              weight: 0.3,
+              reason: 'Default fallback priority',
+            },
+            {
+              name: 'community_service',
+              weight: 0.2,
+              reason: 'Default fallback priority',
+            },
+          ];
+        }
+
+        const fixedAnalysis: ScholarshipAnalysis = {
+          ...analysisData,
+          priorities,
+        };
+
+        setScholarship(scholarshipData);
+        setAnalysis(fixedAnalysis);
+
+        // Try to restore previously selected priorities from detail page
+        let storedNames: string[] | null = null;
+        if (typeof window !== 'undefined') {
+          try {
+            const raw = window.localStorage.getItem(
+              `northstar_selected_priorities_${String(id)}`,
+            );
+            if (raw) {
+              storedNames = JSON.parse(raw);
+            }
+          } catch (e) {
+            console.error(
+              'Failed to read stored priorities from localStorage',
+              e,
+            );
+          }
+        }
+
+        let names: string[];
+        if (storedNames && storedNames.length > 0) {
+          const validSet = new Set(priorities.map((p) => p.name));
+          const filtered = storedNames.filter((n) => validSet.has(n));
+          names = filtered.length > 0 ? filtered : priorities.map((p) => p.name);
+        } else {
+          names = priorities.map((p) => p.name);
+        }
+
         setSelectedPriorities(names);
       } catch (err: any) {
         if (err?.name === 'AbortError') return;
@@ -244,19 +300,25 @@ export default function DraftPage() {
   };
 
   const handleGenerateDraft = async () => {
-    if (!analysis) {
-      setGenerationError('Missing scholarship analysis. Try refreshing the page.');
-      return;
-    }
     if (!studentProfile) {
       setGenerationError('Missing profile. Please fill in your profile first.');
       return;
     }
 
+    const basePriorities = analysis?.priorities ?? [];
+
+    if (basePriorities.length === 0) {
+      setGenerationError(
+        'We could not find any priorities for this scholarship.',
+      );
+      return;
+    }
+
     const normalized = normalizeSelectedPriorities(
-      analysis.priorities ?? [],
+      basePriorities,
       selectedPriorities,
     );
+
     if (normalized.length === 0) {
       setGenerationError(
         'Select at least one priority to focus on for this draft.',
@@ -429,7 +491,7 @@ export default function DraftPage() {
               </div>
             )}
 
-            {/* Notes / “prove AI wrong” box */}
+            {/* Notes */}
             <div className="mt-6 rounded-2xl border border-gray-200 bg-gray-50 p-4">
               <p className="mb-2 text-xs font-semibold uppercase tracking-[0.25em] text-gray-500">
                 Notes for your next draft
@@ -448,12 +510,13 @@ export default function DraftPage() {
               />
             </div>
 
-            {/* Save button (local only for now) */}
+            {/* Save button (local only) */}
             <button
               type="button"
               onClick={() => {
                 try {
-                  const stored = window.localStorage.getItem('northstar_drafts');
+                  const stored =
+                    window.localStorage.getItem('northstar_drafts');
                   const existing = stored ? JSON.parse(stored) : {};
                   const key = `scholarship_${id}`;
                   const updated = {
@@ -483,7 +546,7 @@ export default function DraftPage() {
 
         {/* Right: priorities, strategies, profile recap */}
         <div className="space-y-4">
-          {/* Scholarship + priorities */}
+          {/* Scholarship snapshot */}
           <div className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm">
             <h2 className="mb-4 text-sm font-semibold text-gray-900">
               Scholarship snapshot
@@ -585,28 +648,16 @@ export default function DraftPage() {
               </h2>
               <p className="text-xs text-gray-700">
                 <span className="font-semibold">{studentProfile.full_name}</span>
-                {studentProfile.program && (
-                  <>
-                    {' '}
-                    · {studentProfile.program}
-                  </>
-                )}
-                {studentProfile.university && (
-                  <>
-                    {' '}
-                    · {studentProfile.university}
-                  </>
-                )}
+                {studentProfile.program && <> · {studentProfile.program}</>}
+                {studentProfile.university && <> · {studentProfile.university}</>}
                 {typeof studentProfile.year === 'number' && (
-                  <>
-                    {' '}
-                    · Year {studentProfile.year}
-                  </>
+                  <> · Year {studentProfile.year}</>
                 )}
               </p>
               <p className="mt-2 text-xs text-gray-600">
-                We&apos;re pulling from your experiences, projects, awards, and skills
-                — the more detail you give there, the better this draft gets.
+                We&apos;re pulling from your experiences, projects, awards, and
+                skills — the more detail you give there, the better this draft
+                gets.
               </p>
             </div>
           )}
