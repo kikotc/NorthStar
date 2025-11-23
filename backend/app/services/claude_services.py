@@ -1,27 +1,13 @@
-# app/services/claude_service.py
+# claude_services.py (example)
 from anthropic import Anthropic
 from app.core.config import settings
 
-
 client = Anthropic(api_key=settings.anthropic_api_key)
 
-
-def call_claude(messages: list[dict], model: str = "claude-3-sonnet-20240229"):
-    """
-    Wrapper for calling Claude to keep code clean.
-    Expects a list of messages:
-    [
-      {"role": "user", "content": "Hello"},
-      {"role": "assistant", "content": "..."}
-    ]
-    """
+def call_claude(messages: list[dict]) -> str:
     response = client.messages.create(
-        model=model,
-        max_tokens=800,
-        messages=messages
+        model="claude-3-haiku-20240307",
+        max_tokens=256,
+        messages=messages,
     )
-
-    # Combine all text blocks into a single string
-    return "".join(
-        block.text for block in response.content if block.type == "text"
-    )
+    return response.content[0].text

@@ -1,7 +1,15 @@
+# backend/app/main.py
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from .core.config import settings
-from .services.claude_services import call_claude  # 👈 import our wrapper
+
+from app.core.config import settings
+from app.infrastructure.ai_client import ask_claude
+
+from app.api.routes.weights import router as weights_router
+from app.api.routes.scholarships import router as scholarships_router
+from app.api.routes.essays import router as essays_router
+
 
 app = FastAPI(
     title="NorthStar API",
@@ -9,13 +17,19 @@ app = FastAPI(
     version="0.1.0",
 )
 
-app.add_middleware(  # type: ignore[misc]
+# CORS (hackathon-friendly: allow everything)
+app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Register routers ONCE
+app.include_router(weights_router)
+app.include_router(scholarships_router)
+app.include_router(essays_router)
 
 
 @app.get("/health")
@@ -36,8 +50,5 @@ async def debug_claude() -> dict:
     if not settings.anthropic_api_key:
         return {"error": "ANTHROPIC_API_KEY is not set"}
 
-    reply = call_claude(
-        system_prompt="You are a friendly assistant helping a hackathon team.",
-        user_prompt="Say hi in one short sentence."
-    )
+    reply = await ask_claude("Say hi to the NorthStar hackathon team in one short sentence.")
     return {"reply": reply}
