@@ -25,3 +25,29 @@ def get_claude_client() -> Anthropic:
         _claude_client = Anthropic(api_key=api_key)
 
     return _claude_client
+
+def ask_claude(
+    prompt: str,
+    *,
+    model: str = "claude-3-5-sonnet-latest",
+    max_tokens: int = 1024,
+) -> str:
+    """
+    Send a single user prompt to Claude and return the text response.
+
+    Usage from other files:
+        from infrastructure.ai_client import ask_claude
+        text = await ask_claude("hello")
+    """
+    client = get_claude_client()
+
+    resp = client.messages.create(
+        model=model,
+        max_tokens=max_tokens,
+        messages=[{"role": "user", "content": prompt}],
+    )
+
+    # Extract only text blocks from the response
+    return "".join(
+        block.text for block in resp.content if getattr(block, "type", None) == "text"
+    )
