@@ -23,17 +23,22 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 
   return (
     <div className="mx-auto min-h-screen px-6 py-10 sm:px-12">
-      <header className="mb-8 flex flex-wrap items-center justify-between gap-4 rounded-3xl border border-gray-200 bg-white px-6 py-4 shadow-sm">
-        <Link href="/" className="flex items-center gap-3">
-          <Image src="/logo.svg" alt="North Star AI logo" width={40} height={40} />
-          <div>
-            <p className="text-base font-semibold text-gray-900">North Star AI</p>
-            <p className="text-[10px] uppercase tracking-[0.4em] text-gray-500">
-              Student portal
-            </p>
-          </div>
-        </Link>
-        <nav className="flex flex-wrap items-center gap-3 text-sm text-gray-700">
+      <header className="mb-8 flex flex-wrap items-center gap-4 rounded-3xl border border-gray-200 bg-white px-6 py-4 shadow-sm">
+        {/* Left: logo */}
+        <div className="flex flex-1 items-center gap-3">
+          <Link href="/" className="flex items-center gap-3">
+            <Image src="/logo.svg" alt="North Star AI logo" width={40} height={40} />
+            <div>
+              <p className="text-base font-semibold text-gray-900">North Star AI</p>
+              <p className="text-[10px] uppercase tracking-[0.4em] text-gray-500">
+                Student portal
+              </p>
+            </div>
+          </Link>
+        </div>
+
+        {/* Center: nav pills */}
+        <nav className="flex flex-wrap items-center justify-center gap-3 text-sm text-gray-700">
           {appLinks.map((link) => (
             <Link
               key={link.label}
@@ -44,7 +49,9 @@ export default function AppLayout({ children }: { children: ReactNode }) {
             </Link>
           ))}
         </nav>
-        <div className="flex items-center gap-3">
+
+        {/* Right: user info + sign out */}
+        <div className="flex flex-1 items-center justify-end gap-3">
           {user && (
             <>
               <div className="flex items-center gap-2 rounded-full border border-gray-200 px-4 py-1.5 text-xs text-gray-600">
