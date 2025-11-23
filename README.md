@@ -49,7 +49,7 @@ Claude generates a personalized scholarship essay draft aligned with each awardâ
 
 ## ğŸ Backend Setup (FastAPI)
 
-```bash
+bash
 git clone https://github.com/kikotc/NorthStar.git
 cd NorthStar/backend
 Create virtual environment:
