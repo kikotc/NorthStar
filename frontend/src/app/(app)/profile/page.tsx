@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 
@@ -75,6 +75,49 @@ export default function ProfilePage() {
   const [skills, setSkills] = useState('')
 
   const [errors, setErrors] = useState<ErrorState>({})
+
+  // ---------- NEW: hydrate from localStorage on mount ----------
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    try {
+      const stored = localStorage.getItem('userProfile')
+      if (!stored) return
+
+      const data = JSON.parse(stored)
+
+      setFullName(data.fullName ?? '')
+      setUniversity(data.university ?? '')
+      setProgramOfStudy(data.programOfStudy ?? '')
+      setYear(
+        data.year !== undefined && data.year !== null
+          ? String(data.year)
+          : '',
+      )
+      setSelectedEthnicities(
+        Array.isArray(data.ethnicities) ? data.ethnicities : [],
+      )
+      setIsInternationalStudent(Boolean(data.isInternationalStudent))
+
+      setExperiences(data.experiences ?? '')
+      setProjects(data.projects ?? '')
+      setAwards(data.awards ?? '')
+      setSkills(data.skills ?? '')
+
+      // If they had already started filling the second page, take them there
+      if (
+        (data.experiences && data.experiences.trim() !== '') ||
+        (data.projects && data.projects.trim() !== '') ||
+        (data.awards && data.awards.trim() !== '') ||
+        (data.skills && data.skills.trim() !== '')
+      ) {
+        setStep('details')
+      }
+    } catch (e) {
+      console.error('Failed to load profile from localStorage', e)
+    }
+  }, [])
+  // -------------------------------------------------------------
 
   const toggleEthnicity = (value: string) => {
     setSelectedEthnicities((prev) =>
