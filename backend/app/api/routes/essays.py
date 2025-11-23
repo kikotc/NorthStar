@@ -4,11 +4,11 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import List, Optional
 
-from app.infrastructure.scholarship_repo import (
+from ...infrastructure.scholarship_repo import (
     get_scholarship,
     get_winner_stories_for_scholarship,
 )
-from app.infrastructure.ai_client import ask_claude
+from ...infrastructure.ai_client import ask_claude
 
 
 router = APIRouter(
