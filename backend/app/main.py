@@ -3,12 +3,12 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.core.config import settings
-from app.infrastructure.ai_client import ask_claude
+from .core.config import settings
+from .infrastructure.ai_client import ask_claude
 
-from app.api.routes.weights import router as weights_router
-from app.api.routes.scholarships import router as scholarships_router
-from app.api.routes.essays import router as essays_router
+from .api.routes.weights import router as weights_router
+from .api.routes.scholarships import router as scholarships_router
+from .api.routes.essays import router as essays_router
 
 
 app = FastAPI(
