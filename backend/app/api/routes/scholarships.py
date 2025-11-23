@@ -115,7 +115,8 @@ async def match_scholarships(profile: UserProfileInput) -> ScholarshipMatchRespo
 
     Algorithm (high level):
     1. Load all scholarships from local JSON.
-    2. Filter by residency_status (domestic vs international) using scholarship.legal_status.
+    2. Filter by residency_status (domestic vs international) using a normalized
+       legal_status derived from the scholarship's citizenship field.
     3. Send ONLY that filtered subset + student profile to Claude.
     4. In the prompt, ask Claude to:
        - Infer a hidden "weight profile" (academics, leadership, community, research,
@@ -135,29 +136,47 @@ async def match_scholarships(profile: UserProfileInput) -> ScholarshipMatchRespo
             detail="No scholarships available.",
         )
 
-    # 2) Filter by domestic / international to reduce search space
-    #    We expect scholarship["legal_status"] to be something like:
-    #    "domestic", "international", "both", or empty/None.
+    # 2) Filter by domestic / international to reduce search space.
+    #    Your JSON uses "citizenship" like "Domestic" or "Domestic;International",
+    #    so we normalize that into a legal_status field here.
     residency = profile.residency_status.lower()
     eligible: List[Dict] = []
 
     for s in scholarships:
-        legal = (s.get("legal_status") or "").lower().strip()
+        # Start from any existing legal_status if present
+        legal_raw = (s.get("legal_status") or "").lower().strip()
+        citizenship_raw = (s.get("citizenship") or "").lower()
 
-        # Treat empty legal_status as "both"
-        if not legal:
-            legal = "both"
+        if not legal_raw:
+            # Derive from citizenship string
+            has_domestic = "domestic" in citizenship_raw
+            has_international = "international" in citizenship_raw
+
+            if has_domestic and has_international:
+                legal = "both"
+            elif has_international:
+                legal = "international"
+            elif has_domestic:
+                legal = "domestic"
+            else:
+                # If we really can't tell, treat as both so it isn't silently dropped
+                legal = "both"
+        else:
+            legal = legal_raw
+
+        # Build a normalized copy so downstream always has legal_status
+        normalized = {**s, "legal_status": legal}
 
         if residency == "domestic":
             if legal in ("domestic", "both"):
-                eligible.append(s)
-        else:  # international
+                eligible.append(normalized)
+        else:  # international student
             if legal in ("international", "both"):
-                eligible.append(s)
+                eligible.append(normalized)
 
     # Safety fallback: if filtering removed everything, fall back to all scholarships
     if not eligible:
-        eligible = scholarships
+        eligible = [{**s, "legal_status": "both"} for s in scholarships]
 
     # 3) Build compact summaries to send to Claude
     scholarship_summaries: List[Dict] = []
@@ -169,7 +188,7 @@ async def match_scholarships(profile: UserProfileInput) -> ScholarshipMatchRespo
                 "value": s.get("value"),
                 "deadline": s.get("deadline"),
                 "level_of_study": s.get("level_of_study"),
-                "legal_status": s.get("legal_status"),
+                "legal_status": s.get("legal_status"),  # now normalized
                 "description": s.get("description"),
             }
         )
@@ -182,10 +201,6 @@ async def match_scholarships(profile: UserProfileInput) -> ScholarshipMatchRespo
 
     client = get_claude_client()
 
-    # 4) System prompt:
-    #    - Mentions hidden requirements + weight profiles
-    #    - Allows web research conceptually
-    #    - Forces STRICT JSON and short reasons
     system_prompt = """
 You are an assistant that matches scholarships to a student.
 
@@ -251,11 +266,10 @@ Do not say anything else besides this JSON object.
         "scholarships": scholarship_summaries,
     }
 
-    # 5) Call Claude (use enough tokens so JSON isn't cut off)
     try:
         message = client.messages.create(
-            model="claude-sonnet-4-5-20250929",  # your chosen model
-            max_tokens=2000,                     # FIX: more tokens than before
+            model="claude-sonnet-4-5-20250929",
+            max_tokens=2000,
             temperature=0.3,
             system=system_prompt,
             messages=[
@@ -271,14 +285,12 @@ Do not say anything else besides this JSON object.
             detail=f"Error while calling Claude for scholarship matching: {e}",
         )
 
-    # 6) Get raw text and try to parse JSON (with a fallback for ```json fences)
     raw_text = message.content[0].text
     print("RAW CLAUDE OUTPUT (match_scholarships):", raw_text)
 
     try:
         ai_data = json.loads(raw_text)
     except JSONDecodeError:
-        # Fallback: try to extract JSON between first '{' and last '}'
         start = raw_text.find("{")
         end = raw_text.rfind("}")
         if start != -1 and end != -1:
@@ -309,7 +321,6 @@ Do not say anything else besides this JSON object.
             detail="Claude did not return any scholarship matches.",
         )
 
-    # 7) Build mapping from scholarship_id -> match info
     scores_by_id: Dict[str, Dict] = {}
     for m in raw_matches:
         sid = str(m.get("scholarship_id"))
@@ -317,14 +328,12 @@ Do not say anything else besides this JSON object.
             continue
         scores_by_id[sid] = m
 
-    # 8) Combine JSON data + AI scores into response objects
     summary_by_id: Dict[str, Dict] = {s["id"]: s for s in scholarship_summaries}
     results: List[ScholarshipMatchResult] = []
 
     for sid, score_entry in scores_by_id.items():
         scholarship = summary_by_id.get(sid)
         if not scholarship:
-            # Claude returned an ID that isn't in our data: skip it
             continue
 
         try:
@@ -354,7 +363,6 @@ Do not say anything else besides this JSON object.
             ),
         )
 
-    # 9) Sort by match_percentage and return top 5
     results.sort(key=lambda r: r.match_percentage, reverse=True)
     top_five = results[:5]
 

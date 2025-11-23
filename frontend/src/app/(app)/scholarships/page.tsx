@@ -13,7 +13,6 @@ type UserProfilePayload = {
   year: number;
   residency_status: 'domestic' | 'international';
   ethnicities: string[];
-
   experiences: string[];
   interests: string[];
   awards: string[];
@@ -34,8 +33,20 @@ type MatchedScholarship = {
 
 type MatchResponse = {
   matches?: MatchedScholarship[];
-  scholarships?: MatchedScholarship[]; // safety if backend uses old shape
+  scholarships?: MatchedScholarship[]; // safety if backend ever changes key
 };
+
+type ProfileWithMeta = {
+  payload: UserProfilePayload;
+  completedAt?: string;
+};
+
+type MatchesCache = {
+  profileCompletedAt?: string;
+  matches?: MatchedScholarship[];
+};
+
+// --------- helpers ---------
 
 function splitToList(value: unknown): string[] {
   if (!value) return [];
@@ -49,7 +60,11 @@ function splitToList(value: unknown): string[] {
   return [];
 }
 
-function buildProfilePayload(): UserProfilePayload | null {
+/**
+ * Read the profile from localStorage and build the payload
+ * we send to /api/scholarships/match.
+ */
+function buildProfile(): ProfileWithMeta | null {
   if (typeof window === 'undefined') return null;
 
   const rawJson = window.localStorage.getItem('userProfile');
@@ -71,22 +86,67 @@ function buildProfilePayload(): UserProfilePayload | null {
       year: Number(raw.year ?? 1),
       residency_status: raw.isInternationalStudent ? 'international' : 'domestic',
       ethnicities: Array.isArray(raw.ethnicities) ? raw.ethnicities : [],
-
       experiences,
-      interests: [], // can wire these later if you add them to the form
+      interests: [], // you can wire this up later if you add it to the form
       awards,
       skills: combinedSkills,
     };
 
-    // Basic sanity check: if core fields are missing, treat as incomplete
+    // If core fields are missing, treat as incomplete profile
     if (!payload.full_name || !payload.university || !payload.program || !payload.year) {
       return null;
     }
 
-    return payload;
+    return {
+      payload,
+      completedAt: raw.completedAt,
+    };
   } catch (e) {
     console.error('Failed to parse userProfile from localStorage', e);
     return null;
+  }
+}
+
+/**
+ * Try to read cached matches from localStorage.
+ * We only trust the cache if the profile `completedAt` matches.
+ */
+function loadCachedMatches(profileCompletedAt?: string): MatchedScholarship[] | null {
+  if (typeof window === 'undefined' || !profileCompletedAt) return null;
+
+  const raw = window.localStorage.getItem('northstar_matches');
+  if (!raw) return null;
+
+  try {
+    const parsed = JSON.parse(raw) as MatchesCache;
+    if (
+      parsed.profileCompletedAt === profileCompletedAt &&
+      Array.isArray(parsed.matches)
+    ) {
+      return parsed.matches;
+    }
+  } catch (e) {
+    console.error('Failed to parse matches cache', e);
+  }
+
+  return null;
+}
+
+function saveCachedMatches(
+  profileCompletedAt: string | undefined,
+  matches: MatchedScholarship[],
+) {
+  if (typeof window === 'undefined' || !profileCompletedAt) return;
+
+  const payload: MatchesCache = {
+    profileCompletedAt,
+    matches,
+  };
+
+  try {
+    window.localStorage.setItem('northstar_matches', JSON.stringify(payload));
+  } catch (e) {
+    console.error('Failed to save matches cache', e);
   }
 }
 
@@ -96,15 +156,18 @@ function matchLabel(p: number): string {
   return 'Possible Match';
 }
 
+// --------- page component ---------
+
 export default function ScholarshipsPage() {
-  const [matches, setMatches] = useState<MatchedScholarship[]>([]);
+  // `null` means “we haven’t loaded anything yet”
+  const [matches, setMatches] = useState<MatchedScholarship[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const profile = buildProfilePayload();
+    const profileWithMeta = buildProfile();
 
-    if (!profile) {
+    if (!profileWithMeta) {
       setError(
         'Please complete your profile first so we can match scholarships to you.',
       );
@@ -112,6 +175,17 @@ export default function ScholarshipsPage() {
       return;
     }
 
+    const { payload, completedAt } = profileWithMeta;
+
+    // 1) Try cache first
+    const cached = loadCachedMatches(completedAt);
+    if (cached && cached.length > 0) {
+      setMatches(cached.slice(0, 5));
+      setLoading(false);
+      return;
+    }
+
+    // 2) Otherwise call backend
     const controller = new AbortController();
 
     async function load() {
@@ -125,7 +199,7 @@ export default function ScholarshipsPage() {
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify(profile),
+          body: JSON.stringify(payload),
         });
 
         if (!res.ok) {
@@ -135,12 +209,12 @@ export default function ScholarshipsPage() {
         const data: MatchResponse = await res.json();
         console.log('match api raw response', data);
 
-        // Handle both { matches: [...] } and older { scholarships: [...] } shape
         const serverMatches =
           (data.matches ?? data.scholarships ?? []) as MatchedScholarship[];
 
         const topFive = serverMatches.slice(0, 5);
         setMatches(topFive);
+        saveCachedMatches(completedAt, topFive);
       } catch (err: any) {
         if (err?.name === 'AbortError') return;
         console.error('Failed to load scholarship matches', err);
@@ -154,7 +228,10 @@ export default function ScholarshipsPage() {
     return () => controller.abort();
   }, []);
 
-  if (loading) {
+  // ✅ Treat “matches is null” as still loading to avoid the “No matches yet” flicker
+  const isStillLoading = (loading || matches === null) && !error;
+
+  if (isStillLoading) {
     return (
       <div className="mx-auto max-w-6xl pt-24 text-center text-white">
         Loading your top scholarship matches…
@@ -176,13 +253,13 @@ export default function ScholarshipsPage() {
     );
   }
 
-  if (!matches.length) {
+  // At this point loading is false AND matches is a real array
+  if (!matches || matches.length === 0) {
     return (
       <div className="mx-auto max-w-6xl pt-24 text-center text-white">
         <p className="mb-2 text-lg">No matches yet.</p>
         <p className="text-sm text-slate-300">
-          Try adding more detail about your experiences, projects, awards, and
-          skills.
+          Try adding more detail about your experiences, projects, awards, and skills.
         </p>
       </div>
     );
@@ -193,8 +270,7 @@ export default function ScholarshipsPage() {
       <h1 className="text-3xl font-bold text-white mb-4">Scholarships</h1>
 
       <p className="mb-6 text-sm text-slate-300">
-        These are your top {Math.min(matches.length, 5)} matches based on your
-        profile.
+        These are your top {Math.min(matches.length, 5)} matches based on your profile.
       </p>
 
       <div className="space-y-6">
@@ -250,9 +326,9 @@ export default function ScholarshipsPage() {
               )}
             </div>
 
-            {/* Right: match percentage + button */}
-            <div className="flex w-full flex-col items-center justify-between gap-4 md:w-48">
-              <div className="flex flex-col items-center justify-center rounded-2xl bg-indigo-50 px-6 py-4">
+            {/* Right: match % + button */}
+            <div className="flex w-full flex-col items-stretch justify-between gap-4 md:w-56">
+              <div className="flex w-full flex-1 flex-col items-center justify-center rounded-2xl bg-indigo-50 px-4 py-5 md:min-h-[120px]">
                 <div className="text-3xl font-bold text-indigo-600">
                   {Math.round(s.match_percentage)}%
                 </div>
@@ -263,7 +339,7 @@ export default function ScholarshipsPage() {
 
               <Link
                 href={`/scholarships/${s.id}`}
-                className="w-full rounded-full bg-indigo-600 px-4 py-2 text-center text-sm font-semibold text-white shadow-md hover:bg-indigo-500 transition"
+                className="w-full rounded-full bg-indigo-600 px-4 py-2.5 text-center text-sm font-semibold text-white shadow-md hover:bg-indigo-500 transition"
               >
                 View Details
               </Link>
