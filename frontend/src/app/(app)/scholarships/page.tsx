@@ -233,7 +233,7 @@ export default function ScholarshipsPage() {
 
   if (isStillLoading) {
     return (
-      <div className="mx-auto max-w-6xl pt-24 text-center text-white">
+      <div className="mx-auto max-w-6xl pt-24 text-center text-white text-lg">
         Loading your top scholarship matches…
       </div>
     );
@@ -241,11 +241,11 @@ export default function ScholarshipsPage() {
 
   if (error) {
     return (
-      <div className="mx-auto max-w-6xl pt-24 text-center text-white">
-        <p className="mb-4 text-lg">{error}</p>
+      <div className="mx-auto max-w-6xl pt-24 text-center text-white text-lg">
+        <p className="mb-4">{error}</p>
         <Link
           href="/profile"
-          className="text-indigo-400 hover:text-indigo-300 font-medium"
+          className="font-medium text-indigo-400 hover:text-indigo-300"
         >
           Go back to profile
         </Link>
@@ -257,8 +257,8 @@ export default function ScholarshipsPage() {
   if (!matches || matches.length === 0) {
     return (
       <div className="mx-auto max-w-6xl pt-24 text-center text-white">
-        <p className="mb-2 text-lg">No matches yet.</p>
-        <p className="text-sm text-slate-300">
+        <p className="mb-2 text-xl font-semibold">No matches yet.</p>
+        <p className="text-base text-slate-300">
           Try adding more detail about your experiences, projects, awards, and skills.
         </p>
       </div>
@@ -267,9 +267,9 @@ export default function ScholarshipsPage() {
 
   return (
     <div className="mx-auto max-w-6xl space-y-6 pt-10">
-      <h1 className="text-3xl font-bold text-white mb-4">Scholarships</h1>
+      <h1 className="mb-4 text-3xl font-bold text-white">Scholarships</h1>
 
-      <p className="mb-6 text-sm text-slate-300">
+      <p className="mb-6 text-base md:text-lg text-slate-300">
         These are your top {Math.min(matches.length, 5)} matches based on your profile.
       </p>
 
@@ -280,8 +280,8 @@ export default function ScholarshipsPage() {
             className="flex flex-col gap-6 rounded-3xl bg-white p-6 shadow-sm md:flex-row md:items-stretch"
           >
             {/* Left: scholarship details */}
-            <div className="flex-1 space-y-3 text-sm text-gray-800">
-              <h2 className="text-xl font-semibold text-gray-900">
+            <div className="flex-1 space-y-3 text-base text-gray-800">
+              <h2 className="text-2xl font-semibold text-gray-900">
                 {s.title}
               </h2>
 
@@ -310,17 +310,17 @@ export default function ScholarshipsPage() {
 
               {s.description && (
                 <div className="pt-2">
-                  <p className="text-xs font-semibold text-gray-900 mb-1">
+                  <p className="mb-1 text-sm font-semibold text-gray-900">
                     Description
                   </p>
-                  <p className="text-xs leading-relaxed text-gray-700 line-clamp-4">
+                  <p className="text-sm leading-relaxed text-gray-700 line-clamp-4">
                     {s.description}
                   </p>
                 </div>
               )}
 
               {s.reason && (
-                <p className="pt-2 text-xs text-indigo-700">
+                <p className="pt-2 text-sm text-indigo-700">
                   Why this match: {s.reason}
                 </p>
               )}
@@ -329,17 +329,17 @@ export default function ScholarshipsPage() {
             {/* Right: match % + button */}
             <div className="flex w-full flex-col items-stretch justify-between gap-4 md:w-56">
               <div className="flex w-full flex-1 flex-col items-center justify-center rounded-2xl bg-indigo-50 px-4 py-5 md:min-h-[120px]">
-                <div className="text-3xl font-bold text-indigo-600">
+                <div className="text-4xl font-bold text-indigo-600">
                   {Math.round(s.match_percentage)}%
                 </div>
-                <div className="text-xs font-medium text-indigo-800 mt-1">
+                <div className="mt-1 text-sm font-medium text-indigo-800">
                   {matchLabel(s.match_percentage)}
                 </div>
               </div>
 
               <Link
                 href={`/scholarships/${s.id}`}
-                className="w-full rounded-full bg-indigo-600 px-4 py-2.5 text-center text-sm font-semibold text-white shadow-md hover:bg-indigo-500 transition"
+                className="w-full rounded-full bg-indigo-600 px-4 py-3 text-center text-base font-semibold text-white shadow-md transition hover:bg-indigo-500"
               >
                 View Details
               </Link>
