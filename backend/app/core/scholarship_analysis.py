@@ -3,11 +3,11 @@
 from typing import Dict
 import json
 
-from app.infrastructure.scholarship_repo import (
+from ..infrastructure.scholarship_repo import (
     get_scholarship,
     get_winner_stories_for_scholarship,
 )
-from app.infrastructure.ai_client import ask_claude
+from ..infrastructure.ai_client import ask_claude
 
 
 async def get_scholarship_with_winners(scholarship_id: str) -> Dict:

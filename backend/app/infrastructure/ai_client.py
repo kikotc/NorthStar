@@ -1,28 +1,44 @@
 # backend/app/infrastructure/ai_client.py
 
 from anthropic import Anthropic
-from ..core.config import settings  # note: 'app.core' not '..core' when imported from main
-
-# Create a single Anthropic client using your API key from config
-anthropic = Anthropic(api_key=settings.anthropic_api_key)
-
-# Use the model name shown in your Anthropic dashboard
-MODEL_NAME = "claude-sonnet-4-5-20250929"
+from ..core.config import settings
 
 
-async def ask_claude(prompt: str, max_tokens: int = 1024) -> str:
+# Create the Anthropic client once
+_anthropic_client = None
+
+# Set your model name (use the one from your dashboard or default)
+MODEL_NAME = "claude-sonnet-4-5-20250929"  # Safer default than a dated version
+
+
+def get_claude_client() -> Anthropic:
     """
-    Send a single user prompt to Claude and return the text response.
+    Return a globally reused Anthropic client.
+    If it doesn't exist yet, build it using the API key from settings.
     """
-    # Synchronous client inside async fn is ok for hackathon
-    resp = anthropic.messages.create(
+    global _anthropic_client
+
+    if _anthropic_client is None:
+        api_key = settings.anthropic_api_key
+        if not api_key:
+            raise RuntimeError("Missing Anthropic API key! Check your .env and settings config.")
+        _anthropic_client = Anthropic(api_key=api_key)
+
+    return _anthropic_client
+
+
+async def ask_claude(prompt: str, max_tokens: int = 800) -> str:
+    """
+    A simple helper that wraps messages.create() for single-shot prompt use cases.
+    Keeps it for lightweight calls if needed.
+    """
+    client = get_claude_client()
+
+    resp = client.messages.create(
         model=MODEL_NAME,
         max_tokens=max_tokens,
-        messages=[
-            {"role": "user", "content": prompt}
-        ],
+        messages=[{"role": "user", "content": prompt}]
     )
 
-    # Extract plain text blocks from the response
-    texts = [block.text for block in resp.content if block.type == "text"]
-    return "\n".join(texts)
+    blocks = [block.text for block in resp.content if block.type == "text"]
+    return "\n".join(blocks)
